@@ -37,16 +37,14 @@ void readData(
   if (line == "") continue;
   
   if (line != prev_line) {
-   if (prev_line != "") {
-    if (show_count) {
-          if (!(only_dups || only_uniq)) os << count << ' ';
-     else if (count > 1 && only_dups)    os << count << ' ';
-     else if (count == 1 && only_uniq)   os << count << ' ';
-    }
-
-         if (!(only_dups || only_uniq)) os << prev_line << '\n';
-    else if (count > 1 && only_dups)    os << prev_line << '\n';
-    else if (count == 1 && only_uniq)   os << prev_line << '\n';
+   if (prev_line != "" && (
+    !(only_dups || only_uniq) ||
+     (count > 1 && only_dups) ||
+     (count == 1 && only_uniq)
+   )) {
+    if (show_count) os << count << ' ';
+    
+    os << prev_line << '\n';
    }
 
    prev_line = line;
