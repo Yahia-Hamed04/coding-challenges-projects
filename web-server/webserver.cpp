@@ -1,9 +1,39 @@
-#include <iostream>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
 #include <unistd.h>
-#include <string.h>
+#include <cstring>
+#include <iostream>
+#include <fstream>
+#include <sstream>
+using std::string;
+
+string get_html(char *req_str) {
+ string path;
+ 
+ int space_cnt = 0;
+ for (int i = 0; req_str[i] != 0 && space_cnt < 2; i++) {
+  if (space_cnt == 1 && req_str[i] != ' ') {
+   path += req_str[i];
+  }
+  
+  space_cnt += req_str[i] == ' ';
+ }
+
+ path = "www" + path + "index.html";
+ std::cout << path << '\n';
+
+ std::stringstream html;
+ std::ifstream html_file(path);
+
+ if (html_file.is_open()) {
+  html << html_file.rdbuf();
+ } else {
+  html << "404 File Not Found\n";
+ }
+
+ return html.str();
+}
 
 int main() {
  addrinfo *info, hints = {
@@ -20,24 +50,32 @@ int main() {
 
  int sockfd = socket(info->ai_family, info->ai_socktype, info->ai_protocol);
 
- int yes = 1;
- setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes);
+ char yes = 1;
+ setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, 1);
 
- bind(sockfd, info->ai_addr, info->ai_addrlen);
- listen(sockfd, 20);
+ char* req = new char[1001];
+ string res;
+ int client_fd;
 
- sockaddr_storage client_addr;
- socklen_t addr_size = sizeof client_addr;
- int client_fd = accept(sockfd, (sockaddr *)&client_addr, &addr_size);
-
- char* nil = new char[1001];
- recv(client_fd, nil, 1000, 0);
-
- char* msg = new char[1000 + sizeof("HTTP/1.1 200 OK\r\n\r\n")];
- sprintf(msg, "HTTP/1.1 200 OK\r\n\r\n%s", nil);
- send(client_fd, msg, strlen(msg), 0);
+ while (1) {
+  bind(sockfd, info->ai_addr, info->ai_addrlen);
+  listen(sockfd, 20);
  
- close(client_fd);
+  sockaddr_storage client_addr;
+  socklen_t addr_size = sizeof client_addr;
+  client_fd = accept(sockfd, (sockaddr *)&client_addr, &addr_size);
+ 
+  recv(client_fd, req, 1000, 0);
+ 
+  res += "HTTP/1.1 200 OK\r\n\r\n";
+  res += get_html(req);
+  
+  send(client_fd, res.c_str(), res.length(), 0);
+
+  res.clear();
+  close(client_fd);
+ }
+ 
  close(sockfd);
  freeaddrinfo(info);
 }
